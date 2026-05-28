@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export const useTasks = () => {
   const [tasks, setTasks] = useState(() => {
@@ -10,31 +10,42 @@ export const useTasks = () => {
     localStorage.setItem('kanban_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
-  const addTask = (taskData) => {
+  const addTask = useCallback((taskData) => {
     const newTask = {
       id: Date.now().toString(),
       ...taskData,
+      locked: false,
       createdAt: new Date().toISOString()
     };
     setTasks(prev => [...prev, newTask]);
     return newTask;
-  };
+  }, []);
 
-  const updateTask = (taskId, updates) => {
-    setTasks(prev => prev.map(task => 
+  const updateTask = useCallback((taskId, updates) => {
+    setTasks(prev => prev.map(task =>
       task.id === taskId ? { ...task, ...updates, updatedAt: new Date().toISOString() } : task
     ));
-  };
+  }, []);
 
-  const deleteTask = (taskId) => {
+  const deleteTask = useCallback((taskId) => {
     setTasks(prev => prev.filter(task => task.id !== taskId));
-  };
+  }, []);
 
-  const moveTask = (taskId, newStatus) => {
+  const moveTask = useCallback((taskId, newStatus) => {
     setTasks(prev => prev.map(task =>
       task.id === taskId ? { ...task, status: newStatus, updatedAt: new Date().toISOString() } : task
     ));
-  };
+  }, []);
 
-  return { tasks, addTask, updateTask, deleteTask, moveTask };
+  const toggleLock = useCallback((taskId) => {
+    setTasks(prev => prev.map(task =>
+      task.id === taskId ? { ...task, locked: !task.locked } : task
+    ));
+  }, []);
+
+  const restoreTasks = useCallback((snapshot) => {
+    setTasks(snapshot);
+  }, []);
+
+  return { tasks, addTask, updateTask, deleteTask, moveTask, toggleLock, restoreTasks };
 };

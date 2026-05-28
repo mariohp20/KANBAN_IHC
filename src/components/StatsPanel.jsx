@@ -1,84 +1,130 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Activity, MousePointer, Clock, FileText } from 'lucide-react';
+import { Activity, MousePointer, Clock, CheckCircle2, ListTodo, Loader, Eye } from 'lucide-react';
+
+const formatTime = (seconds) => {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+};
+
+const KPI_COLUMNS = [
+  { id: 'todo',        label: 'Por Hacer',    icon: <ListTodo className="w-4 h-4" />, color: 'indigo' },
+  { id: 'in-progress', label: 'En Progreso',  icon: <Loader className="w-4 h-4" />,  color: 'amber'  },
+  { id: 'review',      label: 'En Revisión',  icon: <Eye className="w-4 h-4" />,     color: 'purple' },
+  { id: 'done',        label: 'Completado',   icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' },
+];
+
+const COLOR_MAP = {
+  indigo:  { bg: 'bg-indigo-50',  border: 'border-indigo-200',  text: 'text-indigo-700',  num: 'text-indigo-800' },
+  amber:   { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   num: 'text-amber-800'  },
+  purple:  { bg: 'bg-purple-50',  border: 'border-purple-200',  text: 'text-purple-700',  num: 'text-purple-800' },
+  emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', num: 'text-emerald-800'},
+};
 
 const StatsPanel = ({ stats, tasks, totalActiveTime, idleTime }) => {
-  const tasksByStatus = {
-    todo: tasks.filter(t => t.status === 'todo').length,
-    'in-progress': tasks.filter(t => t.status === 'in-progress').length,
-    review: tasks.filter(t => t.status === 'review').length,
-    done: tasks.filter(t => t.status === 'done').length
-  };
+  const tasksByStatus = KPI_COLUMNS.reduce((acc, col) => {
+    acc[col.id] = tasks.filter(t => t.status === col.id).length;
+    return acc;
+  }, {});
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
-  };
+  // Traducciones de tipos de evento
+  const translateEventType = (type) => ({
+    task_created:    'Tareas creadas',
+    task_dragged:    'Movimientos',
+    task_updated:    'Ediciones',
+    task_deleted:    'Eliminaciones',
+    button_click:    'Clics en botones',
+    filter_applied:  'Filtros aplicados',
+    search_query:    'Búsquedas',
+    session_start:   'Inicio de sesión',
+    form_submitted:  'Formularios enviados',
+    task_locked:     'Tareas bloqueadas',
+    task_unlocked:   'Tareas desbloqueadas',
+    task_undo:       'Acciones deshechas',
+  }[type] || type);
 
   return (
     <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      className="mt-4 bg-white rounded-lg border-2 border-slate-200 p-6"
+      initial={{ opacity: 0, height: 0, y: -8 }}
+      animate={{ opacity: 1, height: 'auto', y: 0 }}
+      exit={{ opacity: 0, height: 0, y: -8 }}
+      transition={{ duration: 0.22, ease: 'easeInOut' }}
+      className="overflow-hidden"
     >
-      <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-        <Activity className="w-5 h-5" />
-        Session Statistics
-      </h3>
+      <div className="mt-3 bg-white rounded-xl border border-zinc-200 p-5 shadow-sm space-y-5">
+        {/* Título */}
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-violet-500" />
+          <h3 className="text-sm font-semibold text-zinc-700">Estadísticas de Sesión</h3>
+        </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-          <div className="text-2xl font-bold text-blue-700">{tasksByStatus.todo}</div>
-          <div className="text-sm text-blue-600">To Do</div>
+        {/* KPIs por columna */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {KPI_COLUMNS.map(col => {
+            const c = COLOR_MAP[col.color];
+            return (
+              <div key={col.id} className={`${c.bg} ${c.border} border rounded-xl p-3.5`}>
+                <div className={`flex items-center gap-1.5 mb-2 ${c.text}`}>
+                  {col.icon}
+                  <span className="text-xs font-medium">{col.label}</span>
+                </div>
+                <div className={`text-2xl font-bold ${c.num}`}>{tasksByStatus[col.id]}</div>
+              </div>
+            );
+          })}
         </div>
-        <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-          <div className="text-2xl font-bold text-yellow-700">{tasksByStatus['in-progress']}</div>
-          <div className="text-sm text-yellow-600">In Progress</div>
-        </div>
-        <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-          <div className="text-2xl font-bold text-purple-700">{tasksByStatus.review}</div>
-          <div className="text-sm text-purple-600">Review</div>
-        </div>
-        <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-          <div className="text-2xl font-bold text-green-700">{tasksByStatus.done}</div>
-          <div className="text-sm text-green-600">Done</div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-          <MousePointer className="w-5 h-5 text-slate-600" />
-          <div>
-            <div className="text-sm text-slate-600">Total Events</div>
-            <div className="text-lg font-semibold text-slate-800">{stats.totalEvents}</div>
+        {/* Tiempo y actividad */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="flex items-center gap-3 p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+            <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
+              <MousePointer className="w-4 h-4 text-violet-600" />
+            </div>
+            <div>
+              <div className="text-xs text-zinc-500">Eventos totales</div>
+              <div className="text-base font-semibold text-zinc-800">{stats.totalEvents}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+              <Clock className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div>
+              <div className="text-xs text-zinc-500">Tiempo activo</div>
+              <div className="text-base font-semibold text-zinc-800">{formatTime(totalActiveTime)}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+              <Clock className="w-4 h-4 text-amber-600" />
+            </div>
+            <div>
+              <div className="text-xs text-zinc-500">Tiempo inactivo</div>
+              <div className="text-base font-semibold text-zinc-800">{formatTime(idleTime)}</div>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-          <Clock className="w-5 h-5 text-slate-600" />
-          <div>
-            <div className="text-sm text-slate-600">Active Time</div>
-            <div className="text-lg font-semibold text-slate-800">{formatTime(totalActiveTime)}</div>
+        {/* Desglose de eventos */}
+        {stats.eventTypes && Object.keys(stats.eventTypes).length > 0 && (
+          <div className="bg-zinc-50 rounded-xl border border-zinc-100 p-3">
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Desglose de acciones</p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(stats.eventTypes).map(([type, count]) => (
+                <span key={type} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-white border border-zinc-200 text-zinc-600">
+                  <span className="font-semibold text-zinc-800">{count}</span>
+                  {translateEventType(type)}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-          <FileText className="w-5 h-5 text-slate-600" />
-          <div>
-            <div className="text-sm text-slate-600">Idle Time</div>
-            <div className="text-lg font-semibold text-slate-800">{formatTime(idleTime)}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="text-sm text-blue-800">
-          <strong>Event Breakdown:</strong> {stats.eventTypes && Object.entries(stats.eventTypes).map(([type, count]) => 
-            `${type}: ${count}`
-          ).join(' | ')}
-        </div>
+        )}
       </div>
     </motion.div>
   );
